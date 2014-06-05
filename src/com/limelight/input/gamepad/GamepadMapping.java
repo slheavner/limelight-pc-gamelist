@@ -1,7 +1,9 @@
 package com.limelight.input.gamepad;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import com.limelight.input.gamepad.SourceComponent.Direction;
@@ -78,6 +80,14 @@ public class GamepadMapping implements Serializable {
 			}
 		}
 		return null;
+	}
+	
+	/**
+	 * Gets an unmodifiable Map of all component mappings
+	 * @return a map of all currently mapped components
+	 */
+	public Map<SourceComponent, Mapping> getAllMappings() {
+		return Collections.unmodifiableMap(mapping);
 	}
 	
 	/**

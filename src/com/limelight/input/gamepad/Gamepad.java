@@ -1,5 +1,8 @@
 package com.limelight.input.gamepad;
 
+import java.util.Map;
+import java.util.Map.Entry;
+
 import com.limelight.LimeLog;
 import com.limelight.input.Device;
 import com.limelight.input.DeviceListener;
@@ -40,38 +43,44 @@ public class Gamepad implements DeviceListener {
 
 	public void handleButtons(Device device, float[] buttonStates) {
 		GamepadMapping mapping = GamepadSettingsManager.getSettings();
-		
+
 		for (int id = 0; id < buttonStates.length; id++) {
 			Mapping mapped = mapping.get(new SourceComponent(Type.BUTTON, id, null));
 			if (mapped == null) {
 				//LimeLog.info("Unmapped button pressed: " + buttonId);
 				continue;
 			}
-			
+
 			if (!mapped.padComp.isAnalog()) {
 				handleDigitalComponent(mapped, (int)buttonStates[id]);
 			} else {
 				handleAnalogComponent(mapped.padComp, sanitizeValue(mapped, buttonStates[id]));
 			}
-			
+
 			//used for debugging
 			//printInfo(device, new SourceComponent(Type.BUTTON, id, Direction.POSITIVE), mapped.padComp, buttonStates[id]);
-			
+
 		}
 		device.setButtonsState(buttonStates);
-		
+
 	}
 
 	public void handleAxes(Device device, float[] axesStates) {
 		GamepadMapping mapping = GamepadSettingsManager.getSettings();
-		
-		for (int id = 0; id < axesStates.length; id++) {
-			float newValue = axesStates[id];
-			float lastValue = device.getAxisState(id);
-			
+
+		Map<SourceComponent, Mapping> currentlyMapped = mapping.getAllMappings();
+
+		for (Entry<SourceComponent, Mapping> entry : currentlyMapped.entrySet()) {
+			int id = entry.getKey().getId();
+			Mapping mapped = entry.getValue();
+
+			float newValue = sanitizeValue(mapped, axesStates[id]);
+			float lastValue = sanitizeValue(mapped, device.getAxisState(id));
+
+
 			Direction mappedDir = null;
 			if (newValue == 0) {
-				if (lastValue > 0) {
+				if (lastValue >= 0) {
 					mappedDir = Direction.POSITIVE;
 				} else {
 					mappedDir = Direction.NEGATIVE;
@@ -79,28 +88,23 @@ public class Gamepad implements DeviceListener {
 			} else {
 				mappedDir = newValue > 0 ? Direction.POSITIVE : Direction.NEGATIVE;
 			}
-			
-			Mapping mapped = mapping.get(new SourceComponent(Type.AXIS, id, mappedDir));
-			if (mapped == null) {
-				//LimeLog.info("Unmapped axis moved: " + axisId);
+
+			if (mappedDir != entry.getKey().getDirection()) {
 				continue;
 			}
-			float value =  sanitizeValue(mapped, newValue);
 
 			if (mapped.padComp.isAnalog()) {
-				handleAnalogComponent(mapped.padComp, value);
+				handleAnalogComponent(mapped.padComp, newValue);
 			} else {
-				handleDigitalComponent(mapped, Math.round(value));
+				handleDigitalComponent(mapped, Math.round(newValue));
 			}
 
-			if (mapped.padComp == GamepadComponent.RT) {
-				//used for debugging
-				//printInfo(device, new SourceComponent(Type.AXIS, id, mappedDir), mapped.padComp, newValue);
-			}
+			//used for debugging
+			//printInfo(device, new SourceComponent(Type.AXIS, id, mappedDir), mapped.padComp, newValue);
 		}
 		device.setAxesState(axesStates);
 	}
-	
+
 	private float sanitizeValue(Mapping mapped, float value) {
 		float retVal = value;
 		if (mapped.invert) {
@@ -156,7 +160,7 @@ public class Gamepad implements DeviceListener {
 			LimeLog.warning("A mapping error has occured. Ignoring: " + padComp.name());
 			break;
 		}
-		
+
 	}
 
 	private void handleDigitalComponent(Mapping mapped, int pressed) {
