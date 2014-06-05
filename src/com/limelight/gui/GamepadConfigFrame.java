@@ -323,6 +323,22 @@ public class GamepadConfigFrame extends JFrame {
 			}
 		}
 
+		public void handleButtons(Device device, float[] buttonStates) {
+			for (int id = 0; id < buttonStates.length; id++) {
+				handleButton(device, id, buttonStates[id] == 1.0F);
+			}
+		}
+
+		public void handleAxes(Device device, float[] axesStates) {
+			for (int id = 0; id < axesStates.length; id++) {
+				handleAxis(device, id, axesStates[id], device.getAxisState(id));
+			}
+		}
+
+		public void fireControllerPacket() {
+			// do nothing
+		}
+
 	}
 
 	private static class GamepadCheckBox extends JCheckBox {

@@ -38,64 +38,69 @@ public class Gamepad implements DeviceListener {
 		this.conn = conn;
 	}
 
-	public void handleButton(Device device, int buttonId, boolean pressed) {
+	public void handleButtons(Device device, float[] buttonStates) {
 		GamepadMapping mapping = GamepadSettingsManager.getSettings();
-
-		Mapping mapped = mapping.get(new SourceComponent(Type.BUTTON, buttonId, null));
-		if (mapped == null) {
-			//LimeLog.info("Unmapped button pressed: " + buttonId);
-			return;
-		}
-
-		if (!mapped.padComp.isAnalog()) {
-			handleDigitalComponent(mapped, pressed);
-		} else {
-			handleAnalogComponent(mapped.padComp, sanitizeValue(mapped, pressed));
-		}
-
-		//used for debugging
-		//printInfo(device, new SourceComponent(Type.BUTTON, buttonId), mapped.padComp, pressed ? 1F : 0F);
-	}
-
-	public void handleAxis(Device device, int axisId, float newValue, float lastValue) {
-		GamepadMapping mapping = GamepadSettingsManager.getSettings();
-		Direction mappedDir = null;
-		if (newValue == 0) {
-			if (lastValue > 0) {
-				mappedDir = Direction.POSITIVE;
-			} else {
-				mappedDir = Direction.NEGATIVE;
-			}
-		} else {
-			mappedDir = newValue > 0 ? Direction.POSITIVE : Direction.NEGATIVE;
-		}
 		
-		Mapping mapped = mapping.get(new SourceComponent(Type.AXIS, axisId, mappedDir));
-		if (mapped == null) {
-			//LimeLog.info("Unmapped axis moved: " + axisId);
-			return;
+		for (int id = 0; id < buttonStates.length; id++) {
+			Mapping mapped = mapping.get(new SourceComponent(Type.BUTTON, id, null));
+			if (mapped == null) {
+				//LimeLog.info("Unmapped button pressed: " + buttonId);
+				continue;
+			}
+			
+			if (!mapped.padComp.isAnalog()) {
+				handleDigitalComponent(mapped, (int)buttonStates[id]);
+			} else {
+				handleAnalogComponent(mapped.padComp, sanitizeValue(mapped, buttonStates[id]));
+			}
+			
+			//used for debugging
+			//printInfo(device, new SourceComponent(Type.BUTTON, id, Direction.POSITIVE), mapped.padComp, buttonStates[id]);
+			
 		}
-		float value =  sanitizeValue(mapped, newValue);
-
-		if (mapped.padComp.isAnalog()) {
-			handleAnalogComponent(mapped.padComp, value);
-		} else {
-			handleDigitalComponent(mapped, (Math.abs(value) > 0.5));
-		}
-
-		//used for debugging
-		//printInfo(device, new SourceComponent(Type.AXIS, axisId, mappedDir), mapped.padComp, newValue);
+		device.setButtonsState(buttonStates);
+		
 	}
 
+	public void handleAxes(Device device, float[] axesStates) {
+		GamepadMapping mapping = GamepadSettingsManager.getSettings();
+		
+		for (int id = 0; id < axesStates.length; id++) {
+			float newValue = axesStates[id];
+			float lastValue = device.getAxisState(id);
+			
+			Direction mappedDir = null;
+			if (newValue == 0) {
+				if (lastValue > 0) {
+					mappedDir = Direction.POSITIVE;
+				} else {
+					mappedDir = Direction.NEGATIVE;
+				}
+			} else {
+				mappedDir = newValue > 0 ? Direction.POSITIVE : Direction.NEGATIVE;
+			}
+			
+			Mapping mapped = mapping.get(new SourceComponent(Type.AXIS, id, mappedDir));
+			if (mapped == null) {
+				//LimeLog.info("Unmapped axis moved: " + axisId);
+				continue;
+			}
+			float value =  sanitizeValue(mapped, newValue);
 
-	private float sanitizeValue(Mapping mapped, boolean value) {
-		if (mapped.invert) {
-			return value ? 0F : 1F;
-		} else {
-			return value ? 1F : 0F;
+			if (mapped.padComp.isAnalog()) {
+				handleAnalogComponent(mapped.padComp, value);
+			} else {
+				handleDigitalComponent(mapped, Math.round(value));
+			}
+
+			if (mapped.padComp == GamepadComponent.RT) {
+				//used for debugging
+				//printInfo(device, new SourceComponent(Type.AXIS, id, mappedDir), mapped.padComp, newValue);
+			}
 		}
+		device.setAxesState(axesStates);
 	}
-
+	
 	private float sanitizeValue(Mapping mapped, float value) {
 		float retVal = value;
 		if (mapped.invert) {
@@ -151,12 +156,10 @@ public class Gamepad implements DeviceListener {
 			LimeLog.warning("A mapping error has occured. Ignoring: " + padComp.name());
 			break;
 		}
-		if (conn != null) {
-			sendControllerPacket();
-		}
+		
 	}
 
-	private void handleDigitalComponent(Mapping mapped, boolean pressed) {
+	private void handleDigitalComponent(Mapping mapped, int pressed) {
 		switch (mapped.padComp) {
 		case BTN_A:
 			toggle(ControllerPacket.A_FLAG, pressed);
@@ -207,19 +210,6 @@ public class Gamepad implements DeviceListener {
 			LimeLog.warning("A mapping error has occured. Ignoring: " + mapped.padComp.name());
 			return;
 		}
-		if (conn != null) {
-			sendControllerPacket();
-		}
-	}
-
-	/*
-	 * Sends a controller packet to the specified connection containing the current gamepad values
-	 */
-	private void sendControllerPacket() {
-		if (conn != null) {
-			conn.sendControllerInput(inputMap, leftTrigger, rightTrigger, 
-					leftStickX, leftStickY, rightStickX, rightStickY);
-		}
 	}
 
 	/*
@@ -242,11 +232,22 @@ public class Gamepad implements DeviceListener {
 	/*
 	 * Toggles a flag that indicates the specified button was pressed or released
 	 */
-	private void toggle(short button, boolean pressed) {
-		if (pressed) {
+	private void toggle(short button, int pressed) {
+		if (pressed == 1) {
 			inputMap |= button;
 		} else {
 			inputMap &= ~button;
+		}
+	}
+
+
+	/*
+	 * Sends a controller packet to the specified connection containing the current gamepad values
+	 */
+	public void fireControllerPacket() {
+		if (conn != null) {
+			conn.sendControllerInput(inputMap, leftTrigger, rightTrigger, 
+					leftStickX, leftStickY, rightStickX, rightStickY);
 		}
 	}
 

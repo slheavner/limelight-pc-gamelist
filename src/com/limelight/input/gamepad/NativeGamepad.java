@@ -24,7 +24,7 @@ public class NativeGamepad {
 	private static native void shutdown();
 	private static native int numDevices();
 	private static native void detectDevices();
-	private static native void processEvents();
+	private static native Object[] pollDevice(int device);
 	
 	public static void addListener(NativeGamepadListener listener) {
 		listenerList.add(listener);
@@ -103,7 +103,14 @@ public class NativeGamepad {
 						NativeGamepad.detectDevices();
 					}
 					
-					NativeGamepad.processEvents();
+					
+					int numDevices = NativeGamepad.numDevices();
+					for (int i = 0; i < numDevices; i++) {
+						Object[] deviceState = NativeGamepad.pollDevice(i);
+						for (NativeGamepadListener listener : listenerList) {
+							listener.processDevice((float[][])deviceState);
+						}
+					}
 					
 					try {
 						Thread.sleep(pollingIntervalMs);
@@ -129,8 +136,9 @@ public class NativeGamepad {
 	
 	public static void deviceAttachCallback(int deviceId, int numButtons, int numAxes) {
 		LimeLog.info(deviceId + " has attached.");
+		Object[] state = pollDevice(deviceId);
 		for (NativeGamepadListener listener : listenerList) {
-			listener.deviceAttached(deviceId, numButtons, numAxes);
+			listener.deviceAttached(deviceId, numButtons, numAxes, (float[])state[1], (float[])state[2]);
 		}
 	}
 	
@@ -141,21 +149,4 @@ public class NativeGamepad {
 		}
 	}
 	
-	public static void buttonUpCallback(int deviceId, int buttonId) {
-		for (NativeGamepadListener listener : listenerList) {
-			listener.buttonUp(deviceId, buttonId);
-		}
-	}
-	
-	public static void buttonDownCallback(int deviceId, int buttonId) {
-		for (NativeGamepadListener listener : listenerList) {
-			listener.buttonDown(deviceId, buttonId);
-		}
-	}
-	
-	public static void axisMovedCallback(int deviceId, int axisId, float value, float lastValue) {
-		for (NativeGamepadListener listener : listenerList) {
-			listener.axisMoved(deviceId, axisId, value, lastValue);
-		}
-	}
 }

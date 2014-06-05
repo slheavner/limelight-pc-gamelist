@@ -46,32 +46,21 @@ public class GamepadListener implements NativeGamepadListener {
 		listeners.remove(listener);
 	}
 	
-	public void deviceAttached(int deviceId, int numButtons, int numAxes) {
-		devices.put(deviceId, new Device(deviceId, numButtons, numAxes));
+	public void deviceAttached(int deviceId, int numButtons, int numAxes, float[] buttonStates, float[] axisStates) {
+		devices.put(deviceId, new Device(deviceId, numButtons, numAxes, buttonStates, axisStates));
 	}
 
 	public void deviceRemoved(int deviceId) {
 		devices.remove(deviceId);
 	}
 
-	public void buttonDown(int deviceId, int buttonId) {
-		Device dev = devices.get(deviceId);
+	public void processDevice(float[][] deviceState) {
+		int id = (int)deviceState[0][0];
+		
 		for (DeviceListener listener : listeners) {
-			listener.handleButton(dev, buttonId, true);
-		}
-	}
-
-	public void buttonUp(int deviceId, int buttonId) {
-		Device dev = devices.get(deviceId);
-		for (DeviceListener listener : listeners) {
-			listener.handleButton(dev, buttonId, false);
-		}
-	}
-
-	public void axisMoved(int deviceId, int axisId, float value, float lastValue) {
-		Device dev = devices.get(deviceId);
-		for (DeviceListener listener : listeners) {
-			listener.handleAxis(dev, axisId, value, lastValue);
+			listener.handleButtons(devices.get(id), deviceState[1]);
+			listener.handleAxes(devices.get(id), deviceState[2]);
+			listener.fireControllerPacket();
 		}
 	}
 
