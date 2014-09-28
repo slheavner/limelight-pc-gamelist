@@ -75,6 +75,10 @@ public class Limelight implements NvConnectionListener {
 	private static StreamConfiguration createConfiguration(Resolution res, Integer bitRate) {
 		return new StreamConfiguration("Steam", res.width, res.height, res.frameRate, bitRate*1000);
 	}
+	
+	private static StreamConfiguration createConfiguration(Resolution res, Integer bitRate, String app) {
+		return new StreamConfiguration(app, res.width, res.height, res.frameRate, bitRate*1000);
+	}
 
 	/*
 	 * Creates the main frame for the application.
@@ -133,6 +137,15 @@ public class Limelight implements NvConnectionListener {
 
 		limelight.startUp(streamConfig, prefs);
 	}
+	
+	public static void createInstance(String host, String app) {
+		Limelight limelight = new Limelight(host);
+
+		Preferences prefs = PreferencesManager.getPreferences();
+		StreamConfiguration streamConfig = createConfiguration(prefs.getResolution(), prefs.getBitrate(), app);
+
+		limelight.startUp(streamConfig, prefs);
+	}
 
 	/**
 	 * The entry point for the application. <br>
@@ -183,6 +196,7 @@ public class Limelight implements NvConnectionListener {
 		int resolution = 720;
 		int refresh = 60;
 		Integer bitrate = null;
+		String app = "Steam";
 		
 		Preferences prefs = PreferencesManager.getPreferences();
 		
@@ -231,6 +245,13 @@ public class Limelight implements NvConnectionListener {
 				refresh = 30;
 			} else if (args[i].equals("-60fps")) {
 				refresh = 60;
+			} else if(args[i].equals("-game")){
+				if(i+1 < args.length){
+					app = args[i+1];
+					i++;
+				}else{
+					System.err.println("Syntax error: game name expected after -game");
+				}
 			} else {
 				System.out.println("Syntax Error: Unrecognized argument: " + args[i]);
 			}
@@ -240,14 +261,13 @@ public class Limelight implements NvConnectionListener {
 			System.out.println("Syntax Error: You must include a host. Use -host to specifiy a hostname or ip address.");
 			System.exit(5);
 		}
-
 		Resolution streamRes = Resolution.findRes(resolution, refresh);
 		
 		if (bitrate == null) {
 			bitrate = streamRes.defaultBitrate;
 		}
 
-		StreamConfiguration streamConfig = createConfiguration(streamRes, bitrate);
+		StreamConfiguration streamConfig = createConfiguration(streamRes, bitrate, app);
 		
 		prefs.setResolution(streamRes);
 		prefs.setBitrate(bitrate);
