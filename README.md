@@ -1,3 +1,12 @@
+#Limelight (with app selection)
+
+Adds support for app selection based on [spartango's appUI fork](https://github.com/spartango/limelight-pc/tree/app_UI). 
+Also added sorting for the app list, and fixed a bug where the list frame isn't sized properly on Linux.
+
+Not tested on OSx, and games do not resume properly.
+
+Download jars [here](https://drive.google.com/folderview?id=0Bwi3ZqFIsu33M3dRQXZXTjlPWXM&usp=sharing).
+
 #Limelight
 
 [Limelight](https://github.com/limelight-stream) is an open source implementation of NVIDIA's GameStream, as used by the NVIDIA Shield, but built for Linux/OS X/Windows.
